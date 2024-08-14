@@ -18,9 +18,10 @@ mvn install
 
 ## Environment variables
 
- Name           | Value          
-----------------|----------------
- OPENAI_API_KEY | OpenAI API Key 
+ Name                | Value               
+---------------------|---------------------
+ OPENAI_API_KEY      | OpenAI API Key      
+ OPENAI_ASSISTANT_ID | OpenAI Assistant ID 
 
 ## Chatbot
 

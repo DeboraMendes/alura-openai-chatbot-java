@@ -3,7 +3,12 @@ package br.com.alura.chatbot.web.controller;
 import br.com.alura.chatbot.domain.service.ChatbotService;
 import br.com.alura.chatbot.web.dto.PerguntaDto;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
 
 @Controller
 @RequestMapping({"/", "chat"})
@@ -18,7 +23,11 @@ public class ChatController {
     }
 
     @GetMapping
-    public String carregarPaginaChatbot() {
+    public String carregarPaginaChatbot(Model model) {
+        var mensagens = chatbotService.carregarHistorico();
+
+        model.addAttribute("historico", mensagens);
+
         return PAGINA_CHAT;
     }
 
@@ -30,7 +39,8 @@ public class ChatController {
 
     @GetMapping("limpar")
     public String limparConversa() {
-        return PAGINA_CHAT;
+        chatbotService.limparHistorico();
+        return "redirect:/chat";
     }
 
 }

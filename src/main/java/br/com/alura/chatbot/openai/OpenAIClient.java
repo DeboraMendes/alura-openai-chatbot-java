@@ -10,8 +10,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.List;
 
 @Component
 public class OpenAIClient {
@@ -84,6 +86,38 @@ public class OpenAIClient {
                 .max(Comparator.comparingInt(Message::getCreatedAt))
                 .orElseThrow()
                 .getContent().get(0).getText().getValue();
+    }
+
+    public List<String> carregarHistoricoDeMensagens() {
+        var mensagens = new ArrayList<String>();
+
+        if (this.threadId != null) {
+            mensagens.addAll(
+                    openAiService
+                            .listMessages(this.threadId)
+                            .getData()
+                            .stream()
+                            .sorted(Comparator.comparingInt(Message::getCreatedAt))
+                            .map(m -> m.getContent().get(0).getText().getValue())
+                            .toList()
+            );
+        }
+
+        return mensagens;
+    }
+
+    /**
+     * Embora não seja necessário excluir a thread para limpar o histórico, essa é uma prática recomendada ao utilizar o modo Assistant da OpenAI. A gestão eficiente das threads pode ter um impacto significativo tanto na otimização dos recursos quanto na redução de custos associados à plataforma. Abaixo, listamos alguns benefícios dessa recomendação:
+     * 1. Proteção de dados e privacidade: threads antigas podem conter informações sensíveis ou confidenciais que, se não forem mais necessárias, devem ser excluídas para minimizar riscos de segurança e proteger a privacidade dos dados.
+     * 2. Limpeza e organização de dados: acumular threads sem utilidade pode levar à desordem e dificuldade de navegação. Ao remover dados irrelevantes, mantém-se um ambiente de trabalho organizado, facilitando a localização de informações importantes e a gestão geral da plataforma.
+     * 3. Otimização de recursos: recursos computacionais são alocados para manter e processar as threads existentes. Eliminando threads inativas, pode-se reduzir a carga sobre os servidores e otimizar o uso de recursos, o que é crucial para o desempenho do sistema como um todo.
+     * 4. Economia de custos: dependendo do modelo de cobrança, armazenar e gerenciar grandes volumes de dados pode acarretar custos adicionais. Removendo dados desnecessários, usuários e organizações podem economizar financeiramente ao diminuir o uso de armazenamento e processamento.
+     */
+    public void apagarThread() {
+        if (this.threadId != null) {
+            openAiService.deleteThread(this.threadId);
+            this.threadId = null;
+        }
     }
 
 }
