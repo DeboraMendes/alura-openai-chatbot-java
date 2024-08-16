@@ -85,7 +85,9 @@ public class OpenAIClient {
                 .stream()
                 .max(Comparator.comparingInt(Message::getCreatedAt))
                 .orElseThrow()
-                .getContent().get(0).getText().getValue();
+                .getContent().get(0).getText()
+                .getValue()
+                .replaceAll("\\\u3010.*?\\\u3011", "");
     }
 
     public List<String> carregarHistoricoDeMensagens() {
