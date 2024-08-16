@@ -35,3 +35,4 @@ http://localhost:8080/
 * [OpenAI | Assistant Tools](https://platform.openai.com/docs/assistants/tools)
 * [OpenAI | Supported files](https://platform.openai.com/docs/assistants/tools/file-search)
 * [OpenAI | Playground](https://platform.openai.com/playground/assistants)
+* [OpenAI | Function calling](https://platform.openai.com/docs/assistants/tools/function-calling)

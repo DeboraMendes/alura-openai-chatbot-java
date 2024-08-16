@@ -1,9 +1,18 @@
 package br.com.alura.chatbot.openai;
 
+import br.com.alura.chatbot.domain.DadosCalculoFrete;
+import br.com.alura.chatbot.domain.service.CalculadorDeFrete;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.theokanning.openai.completion.chat.ChatFunction;
+import com.theokanning.openai.completion.chat.ChatFunctionCall;
 import com.theokanning.openai.completion.chat.ChatMessageRole;
 import com.theokanning.openai.messages.Message;
 import com.theokanning.openai.messages.MessageRequest;
+import com.theokanning.openai.runs.Run;
 import com.theokanning.openai.runs.RunCreateRequest;
+import com.theokanning.openai.runs.SubmitToolOutputRequestItem;
+import com.theokanning.openai.runs.SubmitToolOutputsRequest;
+import com.theokanning.openai.service.FunctionExecutor;
 import com.theokanning.openai.service.OpenAiService;
 import com.theokanning.openai.threads.ThreadRequest;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,6 +21,7 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
@@ -21,14 +31,17 @@ public class OpenAIClient {
     private final String opeanAIApiKey;
     private final String assistantId;
     private final OpenAiService openAiService;
+    private final CalculadorDeFrete calculadorDeFrete;
 
     private String threadId;
 
     public OpenAIClient(@Value("${app.openai.api.key}") String opeanAIApiKey,
-                        @Value("${app.openai.assistant.id}") String assistantId) {
+                        @Value("${app.openai.assistant.id}") String assistantId,
+                        final CalculadorDeFrete calculadorDeFrete) {
         this.opeanAIApiKey = opeanAIApiKey;
         this.openAiService = new OpenAiService(opeanAIApiKey, Duration.ofSeconds(60));
         this.assistantId = assistantId;
+        this.calculadorDeFrete = calculadorDeFrete;
     }
 
     /**
@@ -61,21 +74,54 @@ public class OpenAIClient {
             openAiService.createMessage(this.threadId, messageRequest);
         }
 
-        //código omitido
-
         var runRequest = RunCreateRequest
                 .builder()
                 .assistantId(assistantId)
                 .build();
         var run = openAiService.createRun(threadId, runRequest);
 
+
+        var concluido = false;
+        var precisaChamarFuncao = false;
         try {
-            while (!run.getStatus().equalsIgnoreCase("completed")) {
-                Thread.sleep(1000 * 10); //10 segundos
+            while (!concluido && !precisaChamarFuncao) {
+                Thread.sleep(1000 * 10);
                 run = openAiService.retrieveRun(threadId, run.getId());
+                concluido = run.getStatus().equalsIgnoreCase("completed");
+                precisaChamarFuncao = run.getRequiredAction() != null;
             }
-        } catch (Exception e) {
+        } catch (InterruptedException e) {
             throw new RuntimeException(e);
+        }
+
+        if (precisaChamarFuncao) {
+            var precoDoFrete = chamarFuncao(run);
+            var submitRequest = SubmitToolOutputsRequest
+                    .builder()
+                    .toolOutputs(List.of(
+                            new SubmitToolOutputRequestItem(
+                                    run
+                                            .getRequiredAction()
+                                            .getSubmitToolOutputs()
+                                            .getToolCalls()
+                                            .get(0)
+                                            .getId(),
+                                    precoDoFrete
+                            )
+                    ))
+                    .build();
+            openAiService.submitToolOutputs(threadId, run.getId(), submitRequest);
+
+            try {
+                while (!concluido) {
+                    Thread.sleep(1000 * 10); //10 segundos
+                    run = openAiService.retrieveRun(threadId, run.getId());
+                    concluido = run.getStatus().equalsIgnoreCase("completed");
+                }
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+
         }
 
         var mensagens = openAiService.listMessages(threadId);
@@ -88,6 +134,22 @@ public class OpenAIClient {
                 .getContent().get(0).getText()
                 .getValue()
                 .replaceAll("\\\u3010.*?\\\u3011", "");
+    }
+
+    private String chamarFuncao(Run run) {
+        try {
+            var funcao = run.getRequiredAction().getSubmitToolOutputs().getToolCalls().get(0).getFunction();
+            var funcaoCalcularFrete = ChatFunction.builder()
+                    .name("calcularFrete")
+                    .executor(DadosCalculoFrete.class, calculadorDeFrete::calcular)
+                    .build();
+
+            var executorDeFuncoes = new FunctionExecutor(Collections.singletonList(funcaoCalcularFrete));
+            var functionCall = new ChatFunctionCall(funcao.getName(), new ObjectMapper().readTree(funcao.getArguments()));
+            return executorDeFuncoes.execute(functionCall).toString();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public List<String> carregarHistoricoDeMensagens() {
