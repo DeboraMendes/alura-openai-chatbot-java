@@ -32,3 +32,6 @@ http://localhost:8080/
 * [Alura | Curso de GPT e Java: desenvolva um Chatbot com IA](https://cursos.alura.com.br/course/gpt-java-desenvolva-chatbot-ia)
 * [OpenAI | Streaming](https://platform.openai.com/docs/api-reference/streaming)
 * [OpenAI | Assistants](https://platform.openai.com/docs/assistants/overview)
+* [OpenAI | Assistant Tools](https://platform.openai.com/docs/assistants/tools)
+* [OpenAI | Supported files](https://platform.openai.com/docs/assistants/tools/file-search)
+* [OpenAI | Playground](https://platform.openai.com/playground/assistants)
